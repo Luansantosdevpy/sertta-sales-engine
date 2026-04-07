@@ -1,4 +1,4 @@
-import { createQueue } from './bullmq';
+import { createQueue } from './queue-factory';
 import { QUEUE_NAMES } from '../../shared/constants/queue-names';
 
 export const webhookIngestionQueue = createQueue(QUEUE_NAMES.webhookIngestion);

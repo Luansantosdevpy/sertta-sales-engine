@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { config } from '../../config';
+import { ERROR_CODES } from '../errors/error-model';
 
 export const apiRateLimitMiddleware = rateLimit({
   windowMs: config.rateLimit.windowMs,
@@ -8,7 +9,7 @@ export const apiRateLimitMiddleware = rateLimit({
   legacyHeaders: false,
   message: {
     error: {
-      code: 'rate_limited',
+      code: ERROR_CODES.rateLimited,
       message: 'Too many requests'
     }
   }

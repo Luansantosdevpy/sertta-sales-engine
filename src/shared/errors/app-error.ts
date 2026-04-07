@@ -1,11 +1,4 @@
-export type ErrorCode =
-  | 'bad_request'
-  | 'unauthorized'
-  | 'forbidden'
-  | 'not_found'
-  | 'conflict'
-  | 'rate_limited'
-  | 'internal_error';
+import type { ErrorCode } from './error-model';
 
 export class AppError extends Error {
   public readonly statusCode: number;

@@ -1,5 +1,6 @@
 import type { RequestHandler } from 'express';
 import type { AnyZodObject } from 'zod';
+import { ValidationError } from '../errors/application-errors';
 
 interface ValidationSchemas {
   body?: AnyZodObject;
@@ -24,6 +25,11 @@ export const validateMiddleware = (schemas: ValidationSchemas): RequestHandler =
 
       next();
     } catch (error) {
+      if (error instanceof Error) {
+        next(new ValidationError(error.message, { cause: error }));
+        return;
+      }
+
       next(error);
     }
   };

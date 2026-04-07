@@ -1,12 +1,15 @@
 import type { RequestHandler } from 'express';
 import mongoose from 'mongoose';
 import { getRedisClient } from '../../../infra/cache/redis-client';
+import { apiResponse } from '../../../shared/http/api-response';
 
 export const livenessHandler: RequestHandler = (_req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptimeSeconds: Math.floor(process.uptime())
+  return apiResponse.success(res, {
+    data: {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: Math.floor(process.uptime())
+    }
   });
 };
 
@@ -23,12 +26,15 @@ export const readinessHandler: RequestHandler = async (_req, res) => {
 
   const ready = mongoReady && redisReady;
 
-  res.status(ready ? 200 : 503).json({
-    status: ready ? 'ready' : 'degraded',
-    timestamp: new Date().toISOString(),
-    checks: {
-      mongo: mongoReady,
-      redis: redisReady
+  return apiResponse.success(res, {
+    statusCode: ready ? 200 : 503,
+    data: {
+      status: ready ? 'ready' : 'degraded',
+      timestamp: new Date().toISOString(),
+      checks: {
+        mongo: mongoReady,
+        redis: redisReady
+      }
     }
   });
 };

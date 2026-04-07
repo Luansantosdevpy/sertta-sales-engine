@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from './app-error';
+import { ERROR_CODES } from './error-model';
 
 export const errorHandlerMiddleware: ErrorRequestHandler = (error, req, res, _next) => {
   if (res.headersSent) {
@@ -10,7 +11,7 @@ export const errorHandlerMiddleware: ErrorRequestHandler = (error, req, res, _ne
   if (error instanceof ZodError) {
     res.status(400).json({
       error: {
-        code: 'bad_request',
+        code: ERROR_CODES.validationFailed,
         message: 'Validation failed',
         details: error.issues
       },
@@ -39,7 +40,7 @@ export const errorHandlerMiddleware: ErrorRequestHandler = (error, req, res, _ne
 
   res.status(500).json({
     error: {
-      code: 'internal_error',
+      code: ERROR_CODES.internalError,
       message: 'Internal server error'
     },
     requestId: req.requestId

@@ -8,7 +8,8 @@ export const baseProcessor: Processor<JobEnvelope> = async (job) => {
       queue: job.queueName,
       jobId: job.id,
       tenantId: job.data.tenantId,
-      correlationId: job.data.correlationId
+      correlationId: job.data.correlationId,
+      idempotencyKey: job.data.idempotencyKey
     },
     'Job received'
   );
