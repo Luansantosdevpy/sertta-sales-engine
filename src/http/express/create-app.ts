@@ -26,7 +26,14 @@ export const createApp = () => {
   app.use(requestContextMiddleware);
   app.use(requestLoggerMiddleware);
   app.use(apiRateLimitMiddleware);
-  app.use(express.json({ limit: '1mb' }));
+  app.use(
+    express.json({
+      limit: '1mb',
+      verify: (req, _res, buffer) => {
+        (req as typeof req & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+      }
+    })
+  );
   app.use(express.urlencoded({ extended: false }));
   app.use(tenantContextMiddleware);
 
