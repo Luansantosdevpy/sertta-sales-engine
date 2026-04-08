@@ -5,6 +5,8 @@ export interface QueueRuntimeConfig {
   attempts: number;
   backoffDelayMs: number;
   description: string;
+  limiterMax?: number;
+  limiterDurationMs?: number;
 }
 
 export const QUEUE_CONFIG: Record<QueueName, QueueRuntimeConfig> = {
@@ -12,7 +14,9 @@ export const QUEUE_CONFIG: Record<QueueName, QueueRuntimeConfig> = {
     concurrency: 20,
     attempts: 8,
     backoffDelayMs: 2000,
-    description: 'Normalize and process inbound webhook events'
+    description: 'Normalize and process inbound webhook events',
+    limiterMax: 200,
+    limiterDurationMs: 1000
   },
   [QUEUE_NAMES.inboundEvents]: {
     concurrency: 20,
@@ -30,7 +34,9 @@ export const QUEUE_CONFIG: Record<QueueName, QueueRuntimeConfig> = {
     concurrency: 15,
     attempts: 7,
     backoffDelayMs: 1500,
-    description: 'Deliver outbound customer messages'
+    description: 'Deliver outbound customer messages',
+    limiterMax: 120,
+    limiterDurationMs: 1000
   },
   [QUEUE_NAMES.scheduledReminders]: {
     concurrency: 10,
@@ -54,13 +60,17 @@ export const QUEUE_CONFIG: Record<QueueName, QueueRuntimeConfig> = {
     concurrency: 10,
     attempts: 10,
     backoffDelayMs: 3000,
-    description: 'Retry failed webhook downstream deliveries'
+    description: 'Retry failed webhook downstream deliveries',
+    limiterMax: 60,
+    limiterDurationMs: 1000
   },
   [QUEUE_NAMES.aiTasks]: {
     concurrency: 5,
     attempts: 4,
     backoffDelayMs: 2500,
-    description: 'AI and enrichment tasks'
+    description: 'AI and enrichment tasks',
+    limiterMax: 10,
+    limiterDurationMs: 1000
   },
   [QUEUE_NAMES.usageAggregation]: {
     concurrency: 8,

@@ -32,9 +32,19 @@ export const createWorker = <TPayload>(
   processor: Processor<JobEnvelope<TPayload>>,
   options?: Omit<WorkerOptions, 'connection'>
 ): Worker<JobEnvelope<TPayload>> => {
+  const queueConfig = QUEUE_CONFIG[name];
+
   return new Worker<JobEnvelope<TPayload>>(name, processor, {
     connection: createBullMqConnection(`worker-${name}`),
-    concurrency: QUEUE_CONFIG[name].concurrency,
+    concurrency: queueConfig.concurrency,
+    ...(queueConfig.limiterMax && queueConfig.limiterDurationMs
+      ? {
+          limiter: {
+            max: queueConfig.limiterMax,
+            duration: queueConfig.limiterDurationMs
+          }
+        }
+      : {}),
     ...options
   });
 };
