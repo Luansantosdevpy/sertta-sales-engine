@@ -66,6 +66,19 @@ export const webhooksRepository = {
     );
   },
 
+  async markIgnored(eventId: string, reason: string) {
+    return WebhookEventModel.findByIdAndUpdate(
+      eventId,
+      {
+        status: 'ignored',
+        processedAt: new Date(),
+        $inc: { processingAttempts: 1 },
+        errorMessage: reason
+      },
+      { new: true }
+    );
+  },
+
   async markFailed(eventId: string, errorMessage: string) {
     return WebhookEventModel.findByIdAndUpdate(
       eventId,
