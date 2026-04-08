@@ -26,7 +26,13 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
 
   IDEMPOTENCY_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 30),
-  WEBHOOK_DEFAULT_SIGNATURE_SECRET: z.string().optional()
+  WEBHOOK_DEFAULT_SIGNATURE_SECRET: z.string().optional(),
+
+  EXECUTION_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(45),
+  WEBHOOK_EVENT_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+  JOB_RECORD_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+
+  WORKER_QUEUES: z.string().optional()
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
