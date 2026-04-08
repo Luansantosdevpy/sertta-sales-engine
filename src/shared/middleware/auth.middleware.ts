@@ -1,12 +1,18 @@
 import type { NextFunction, Request, Response } from 'express';
+import { TenantMemberModel } from '../../modules/tenant-memberships/infrastructure/tenant-member.model';
 import { getRolePermissions } from '../auth/permissions';
-import type { Role } from '../auth/roles';
+import { ROLES, type Role } from '../auth/roles';
 import { requestContext } from '../context/request-context';
-import { UnauthorizedError } from '../errors/application-errors';
+import { ForbiddenError, UnauthorizedError } from '../errors/application-errors';
 import { extractBearerToken } from '../security/extract-bearer-token';
 import { tokenService } from '../security/token.service';
+import { resolveTenantContext } from '../tenancy/tenant-context';
+import {
+  assertTenantMatchesAuth,
+  resolveTenantIdForRequest
+} from '../tenancy/tenant-resolution';
 
-export const authMiddleware = (req: Request, _res: Response, next: NextFunction) => {
+export const authMiddleware = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     const token = extractBearerToken(req);
     const claims = tokenService.verifyAccessToken(token);
@@ -15,19 +21,48 @@ export const authMiddleware = (req: Request, _res: Response, next: NextFunction)
       throw new UnauthorizedError('Invalid token type');
     }
 
-    const role = claims.role as Role;
+    const tokenRole = claims.role as Role;
+    const resolvedTenantId = resolveTenantIdForRequest(req) ?? claims.tenantId;
+
+    let effectiveRole: Role = tokenRole;
+
+    if (tokenRole !== ROLES.systemAdmin) {
+      assertTenantMatchesAuth(claims.tenantId, resolvedTenantId);
+
+      const membership = await TenantMemberModel.findOne({
+        tenantId: resolvedTenantId,
+        userId: claims.sub,
+        status: 'active'
+      });
+
+      if (!membership) {
+        throw new ForbiddenError('No active tenant membership for this tenant', {
+          tenantId: resolvedTenantId,
+          userId: claims.sub
+        });
+      }
+
+      effectiveRole = String(membership['role']) as Role;
+    }
 
     req.auth = {
       userId: claims.sub,
-      tenantId: claims.tenantId,
-      role,
-      permissions: getRolePermissions(role)
+      tenantId: resolvedTenantId,
+      role: effectiveRole,
+      permissions: getRolePermissions(effectiveRole)
     };
+
+    req.tenantContext = resolveTenantContext({
+      tenantId: resolvedTenantId,
+      actorUserId: claims.sub,
+      actorRole: effectiveRole
+    });
 
     requestContext.setActor({
       userId: claims.sub,
-      role
+      role: effectiveRole
     });
+    requestContext.setTenant(resolvedTenantId);
 
     next();
   } catch (error) {
