@@ -1,4 +1,5 @@
 import type { Worker } from 'bullmq';
+import { config } from '../../config';
 import { logger } from '../../infra/logger/pino';
 import { createWorker } from '../../infra/queue/queue-factory';
 import { jobLifecycleService } from '../lifecycle/job-lifecycle.service';
@@ -6,8 +7,31 @@ import { workerRegistrations } from './worker-registry';
 
 const workers: Worker[] = [];
 
+const resolveWorkerRegistrations = () => {
+  const queueFilter = config.workers.queueFilter;
+
+  if (!queueFilter || queueFilter.length === 0) {
+    return workerRegistrations;
+  }
+
+  const normalizedSet = new Set(queueFilter);
+  return workerRegistrations.filter((item) => normalizedSet.has(item.queueName));
+};
+
 export const startWorkers = async (): Promise<void> => {
-  const createdWorkers = workerRegistrations.map((registration) => {
+  const activeRegistrations = resolveWorkerRegistrations();
+
+  if (activeRegistrations.length === 0) {
+    logger.warn(
+      {
+        configuredQueues: config.workers.queueFilter
+      },
+      'No worker registrations matched WORKER_QUEUES configuration'
+    );
+    return;
+  }
+
+  const createdWorkers = activeRegistrations.map((registration) => {
     const worker = createWorker(registration.queueName, registration.processor);
 
     worker.on('active', (job) => {
@@ -39,11 +63,22 @@ export const startWorkers = async (): Promise<void> => {
       logger.error({ err: error, queue: registration.queueName, jobId: job?.id }, 'Job failed');
     });
 
+    worker.on('stalled', (jobId) => {
+      logger.warn({ queue: registration.queueName, jobId }, 'Job stalled and will be retried');
+    });
+
     return worker;
   });
 
   workers.push(...createdWorkers);
-  logger.info({ workerCount: workers.length }, 'Workers started');
+
+  logger.info(
+    {
+      workerCount: workers.length,
+      queues: activeRegistrations.map((item) => item.queueName)
+    },
+    'Workers started'
+  );
 };
 
 export const stopWorkers = async (): Promise<void> => {
