@@ -10,10 +10,12 @@ import { plansRouter } from '../../../modules/plans/presentation/plans.routes';
 import { tenantsRouter } from '../../../modules/tenants/presentation/tenants.routes';
 import { usageRouter } from '../../../modules/usage/presentation/usage.routes';
 import { usersRouter } from '../../../modules/users/presentation/users.routes';
+import { webhooksRouter } from '../../../modules/webhooks/presentation/webhooks.routes';
 
 export const apiRouter = Router();
 
 apiRouter.use(healthRouter);
+apiRouter.use(webhooksRouter);
 apiRouter.use(authRouter);
 apiRouter.use(usersRouter);
 apiRouter.use(plansRouter);
