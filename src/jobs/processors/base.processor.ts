@@ -3,7 +3,7 @@ import { logger } from '../../infra/logger/pino';
 import { runJobWithContext } from '../../infra/queue/job-context';
 import type { JobEnvelope } from '../../infra/queue/job-envelope';
 
-export const baseProcessor: Processor<JobEnvelope> = async (job) => {
+export const baseProcessor: Processor<JobEnvelope<unknown>> = async (job) => {
   await runJobWithContext(job, async () => {
     logger.info(
       {
@@ -11,6 +11,7 @@ export const baseProcessor: Processor<JobEnvelope> = async (job) => {
         jobId: job.id,
         tenantId: job.data.tenantId,
         correlationId: job.data.correlationId,
+        eventType: job.data.eventType,
         idempotencyKey: job.data.idempotencyKey
       },
       'Job received'
