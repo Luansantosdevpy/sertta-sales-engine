@@ -1,28 +1,46 @@
 import type { Worker } from 'bullmq';
-import { createWorker } from '../../infra/queue/bullmq';
 import { logger } from '../../infra/logger/pino';
-import { QUEUE_NAMES } from '../../shared/constants/queue-names';
-import { baseProcessor } from '../processors/base.processor';
-import { webhookProcessor } from '../processors/webhook.processor';
+import { createWorker } from '../../infra/queue/queue-factory';
+import { jobLifecycleService } from '../lifecycle/job-lifecycle.service';
+import { workerRegistrations } from './worker-registry';
 
 const workers: Worker[] = [];
 
 export const startWorkers = async (): Promise<void> => {
-  const createdWorkers = [
-    createWorker(QUEUE_NAMES.webhookIngestion, webhookProcessor, { concurrency: 20 }),
-    createWorker(QUEUE_NAMES.automationDispatch, baseProcessor, { concurrency: 15 }),
-    createWorker(QUEUE_NAMES.usageAggregation, baseProcessor, { concurrency: 10 })
-  ];
+  const createdWorkers = workerRegistrations.map((registration) => {
+    const worker = createWorker(registration.queueName, registration.processor);
 
-  for (const worker of createdWorkers) {
-    worker.on('failed', (job, error) => {
-      logger.error({ err: error, queue: worker.name, jobId: job?.id }, 'Job failed');
+    worker.on('active', (job) => {
+      if (!job) {
+        return;
+      }
+
+      void jobLifecycleService.onActive(job).catch((error) => {
+        logger.error({ err: error, queue: registration.queueName, jobId: job.id }, 'Failed to record active job lifecycle');
+      });
     });
 
     worker.on('completed', (job) => {
-      logger.debug({ queue: worker.name, jobId: job.id }, 'Job completed');
+      void jobLifecycleService.onCompleted(job).catch((error) => {
+        logger.error({ err: error, queue: registration.queueName, jobId: job.id }, 'Failed to record completed job lifecycle');
+      });
+
+      logger.debug({ queue: registration.queueName, jobId: job.id }, 'Job completed');
     });
-  }
+
+    worker.on('failed', (job, error) => {
+      void jobLifecycleService.onFailed(job, error).catch((lifecycleError) => {
+        logger.error(
+          { err: lifecycleError, queue: registration.queueName, jobId: job?.id },
+          'Failed to record failed job lifecycle'
+        );
+      });
+
+      logger.error({ err: error, queue: registration.queueName, jobId: job?.id }, 'Job failed');
+    });
+
+    return worker;
+  });
 
   workers.push(...createdWorkers);
   logger.info({ workerCount: workers.length }, 'Workers started');
