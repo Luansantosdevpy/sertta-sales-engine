@@ -7,6 +7,12 @@ const corsOrigins =
         .map((origin) => origin.trim())
         .filter(Boolean);
 
+const workerQueues = env.WORKER_QUEUES
+  ? env.WORKER_QUEUES.split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  : null;
+
 export const config = {
   app: {
     env: env.NODE_ENV,
@@ -43,5 +49,13 @@ export const config = {
   },
   webhooks: {
     defaultSignatureSecret: env.WEBHOOK_DEFAULT_SIGNATURE_SECRET
+  },
+  retention: {
+    executionLogsDays: env.EXECUTION_LOG_RETENTION_DAYS,
+    webhookEventsDays: env.WEBHOOK_EVENT_RETENTION_DAYS,
+    jobRecordsDays: env.JOB_RECORD_RETENTION_DAYS
+  },
+  workers: {
+    queueFilter: workerQueues
   }
 } as const;
