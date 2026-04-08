@@ -114,7 +114,9 @@ export const webhooksService = {
       'webhook.process',
       createJobEnvelope({
         tenantId: normalized.tenantId,
+        eventType: 'webhook.received',
         payload: queuePayload,
+        producer: 'webhooks.module',
         ...(normalized.idempotencyKey ? { idempotencyKey: normalized.idempotencyKey } : {})
       }),
       {
@@ -145,4 +147,3 @@ export const webhooksService = {
     };
   }
 };
-

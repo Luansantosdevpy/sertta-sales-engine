@@ -25,7 +25,8 @@ export const webhookProcessor: Processor<JobEnvelope<WebhookQueuePayload>> = asy
         {
           webhookEventId: eventId,
           provider: event['provider'],
-          eventType: event['eventType']
+          eventType: event['eventType'],
+          queueEventType: job.data.eventType
         },
         'Processing webhook event'
       );
