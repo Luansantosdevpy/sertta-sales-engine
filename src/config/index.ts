@@ -40,5 +40,8 @@ export const config = {
   },
   idempotency: {
     ttlSeconds: env.IDEMPOTENCY_TTL_SECONDS
+  },
+  webhooks: {
+    defaultSignatureSecret: env.WEBHOOK_DEFAULT_SIGNATURE_SECRET
   }
 } as const;
