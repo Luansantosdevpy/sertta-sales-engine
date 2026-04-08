@@ -2,7 +2,7 @@ import type { Job } from 'bullmq';
 import type { JobEnvelope } from './job-envelope';
 import { requestContext } from '../../shared/context/request-context';
 
-export const runJobWithContext = async <TPayload extends Record<string, unknown>, TResult>(
+export const runJobWithContext = async <TPayload, TResult>(
   job: Job<JobEnvelope<TPayload>>,
   callback: () => Promise<TResult>
 ): Promise<TResult> => {
