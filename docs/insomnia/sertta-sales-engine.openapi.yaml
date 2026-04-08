@@ -1,0 +1,447 @@
+openapi: 3.0.3
+info:
+  title: Sertta Sales Engine API
+  version: 0.1.0
+  description: Multi-tenant modular monolith backend foundation.
+servers:
+  - url: '{{ base_url }}{{ api_prefix }}'
+    description: Local
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      responses:
+        '200':
+          description: OK
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      responses:
+        '200': { description: Ready }
+        '503': { description: Degraded }
+
+  /users:
+    post:
+      tags: [Users]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, fullName, password]
+              properties:
+                email: { type: string, format: email }
+                fullName: { type: string }
+                password: { type: string, minLength: 8 }
+                phoneNumber: { type: string }
+            example:
+              email: '{{ user_email }}'
+              fullName: '{{ user_full_name }}'
+              password: '{{ user_password }}'
+              phoneNumber: '+5511999990000'
+      responses:
+        '201': { description: Created }
+
+  /users/me:
+    get:
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      summary: Current user
+      responses:
+        '200': { description: OK }
+
+  /plans:
+    get:
+      tags: [Plans]
+      summary: List active plans
+      responses:
+        '200': { description: OK }
+
+  /plans/{planId}:
+    get:
+      tags: [Plans]
+      summary: Get plan by id
+      parameters:
+        - in: path
+          name: planId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+
+  /tenants:
+    post:
+      tags: [Tenants]
+      summary: Create tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug, planId, ownerUserId]
+              properties:
+                name: { type: string }
+                slug: { type: string }
+                planId: { type: string }
+                ownerUserId: { type: string }
+            example:
+              name: Demo Tenant
+              slug: demo-tenant
+              planId: '{{ plan_id }}'
+              ownerUserId: '{{ user_id }}'
+      responses:
+        '201': { description: Created }
+
+  /tenants/my:
+    get:
+      tags: [Tenants]
+      security: [{ bearerAuth: [] }]
+      summary: List my tenants
+      responses:
+        '200': { description: OK }
+
+  /tenants/{tenantId}:
+    get:
+      tags: [Tenants]
+      security: [{ bearerAuth: [] }]
+      summary: Get tenant by id
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, tenantId]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                tenantId: { type: string }
+            example:
+              email: '{{ user_email }}'
+              password: '{{ user_password }}'
+              tenantId: '{{ tenant_id }}'
+      responses:
+        '200': { description: OK }
+        '401': { description: Invalid credentials }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+            example:
+              refreshToken: '{{ refresh_token }}'
+      responses:
+        '200': { description: OK }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      summary: Get auth context
+      responses:
+        '200': { description: OK }
+
+  /integrations:
+    get:
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      summary: List integrations
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive, error] }
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      summary: Create integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, provider]
+              properties:
+                name: { type: string }
+                provider: { type: string, enum: [whatsapp, crm, email, sms, custom_webhook] }
+                externalAccountId: { type: string }
+                credentialsRef: { type: string }
+            example:
+              name: WhatsApp Main
+              provider: whatsapp
+              externalAccountId: acct-001
+              credentialsRef: vault://tenant/main-wa
+      responses:
+        '201': { description: Created }
+
+  /channels:
+    get:
+      tags: [Channels]
+      security: [{ bearerAuth: [] }]
+      summary: List channels
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive] }
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Channels]
+      security: [{ bearerAuth: [] }]
+      summary: Create channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, kind, integrationId]
+              properties:
+                name: { type: string }
+                kind: { type: string, enum: [whatsapp, email, sms, webchat, voice] }
+                integrationId: { type: string }
+                externalChannelId: { type: string }
+                endpoint: { type: string }
+            example:
+              name: WhatsApp BR
+              kind: whatsapp
+              integrationId: '{{ integration_id }}'
+              externalChannelId: wa-br-01
+      responses:
+        '201': { description: Created }
+
+  /automation-templates:
+    get:
+      tags: [AutomationTemplates]
+      security: [{ bearerAuth: [] }]
+      summary: List templates (platform + tenant)
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [AutomationTemplates]
+      security: [{ bearerAuth: [] }]
+      summary: Create tenant template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, triggerType, definition]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                description: { type: string }
+                triggerType:
+                  type: string
+                  enum: [webhook_received, lead_created, message_received, schedule, manual]
+                definition:
+                  type: object
+                  additionalProperties: true
+            example:
+              code: inbound-lead-default
+              name: Inbound Lead Automation
+              triggerType: webhook_received
+              definition:
+                steps:
+                  - type: tag-contact
+                    tag: inbound-lead
+      responses:
+        '201': { description: Created }
+
+  /automation-instances:
+    get:
+      tags: [AutomationInstances]
+      security: [{ bearerAuth: [] }]
+      summary: List instances
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, paused, archived] }
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [AutomationInstances]
+      security: [{ bearerAuth: [] }]
+      summary: Create instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, templateId, templateVersion]
+              properties:
+                name: { type: string }
+                templateId: { type: string }
+                templateVersion: { type: integer, minimum: 1 }
+                triggerConfig:
+                  type: object
+                  additionalProperties: true
+                runtimeConfig:
+                  type: object
+                  additionalProperties: true
+                channelId: { type: string }
+                integrationId: { type: string }
+            example:
+              name: Lead Intake Instance
+              templateId: '{{ template_id }}'
+              templateVersion: 1
+              channelId: '{{ channel_id }}'
+      responses:
+        '201': { description: Created }
+
+  /automation-instances/{instanceId}:
+    get:
+      tags: [AutomationInstances]
+      security: [{ bearerAuth: [] }]
+      summary: Get instance
+      parameters:
+        - in: path
+          name: instanceId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+
+  /automation-instances/{instanceId}/status:
+    patch:
+      tags: [AutomationInstances]
+      security: [{ bearerAuth: [] }]
+      summary: Update instance status
+      parameters:
+        - in: path
+          name: instanceId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, paused, archived] }
+            example:
+              status: paused
+      responses:
+        '200': { description: OK }
+
+  /usage/counters:
+    get:
+      tags: [Usage]
+      security: [{ bearerAuth: [] }]
+      summary: List usage counters
+      parameters:
+        - in: query
+          name: metric
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /executions/jobs:
+    get:
+      tags: [Executions]
+      security: [{ bearerAuth: [] }]
+      summary: List job records
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [queued, processing, completed, failed, canceled] }
+      responses:
+        '200': { description: OK }
+
+  /executions/logs:
+    get:
+      tags: [Executions]
+      security: [{ bearerAuth: [] }]
+      summary: List execution logs
+      parameters:
+        - in: query
+          name: level
+          schema: { type: string, enum: [debug, info, warn, error] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [started, step_success, step_failed, finished] }
+      responses:
+        '200': { description: OK }
+
+  /webhooks/{provider}/{tenantId}:
+    post:
+      tags: [Webhooks]
+      summary: Ingest webhook event
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema: { type: string, enum: [whatsapp, stripe, hubspot, custom] }
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+        - in: header
+          name: idempotency-key
+          required: false
+          schema: { type: string }
+        - in: header
+          name: x-webhook-signature
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              eventType: lead.created
+              eventId: evt-lead-001
+              leadId: lead-001
+              fullName: Jane Doe
+              email: jane@example.com
+              phone: '+5511999991111'
+              source: landing-page
+              tags: [vip, inbound]
+      responses:
+        '202': { description: Accepted }
+        '401': { description: Invalid signature }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

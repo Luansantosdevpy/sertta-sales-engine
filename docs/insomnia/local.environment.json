@@ -1,0 +1,17 @@
+{
+  "base_url": "http://localhost:3000",
+  "api_prefix": "/api",
+  "user_email": "owner@example.com",
+  "user_full_name": "Owner User",
+  "user_password": "ChangeMe123!",
+  "user_id": "",
+  "plan_id": "",
+  "tenant_id": "",
+  "access_token": "",
+  "refresh_token": "",
+  "integration_id": "",
+  "channel_id": "",
+  "template_id": "",
+  "instance_id": "",
+  "webhook_secret": "local-webhook-secret"
+}
