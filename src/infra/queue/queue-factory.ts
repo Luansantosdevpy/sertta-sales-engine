@@ -2,46 +2,66 @@ import type { JobsOptions, Processor, QueueOptions, WorkerOptions } from 'bullmq
 import { Queue, Worker } from 'bullmq';
 import { createBullMqConnection } from '../cache/redis-client';
 import type { QueueName } from '../../shared/constants/queue-names';
+import { QUEUE_CONFIG } from './queue-catalog';
 import type { JobEnvelope } from './job-envelope';
+import { jobLifecycleService } from '../../jobs/lifecycle/job-lifecycle.service';
 
-const defaultJobOptions: JobsOptions = {
-  attempts: 5,
+const buildDefaultJobOptions = (queueName: QueueName): JobsOptions => ({
+  attempts: QUEUE_CONFIG[queueName].attempts,
   backoff: {
     type: 'exponential',
-    delay: 1_000
+    delay: QUEUE_CONFIG[queueName].backoffDelayMs
   },
-  removeOnComplete: 1_000,
+  removeOnComplete: 2_000,
   removeOnFail: 5_000
-};
+});
 
-export const createQueue = <TPayload extends Record<string, unknown>>(
+export const createQueue = <TPayload>(
   name: QueueName,
   options?: Partial<QueueOptions>
 ): Queue<JobEnvelope<TPayload>> => {
   return new Queue<JobEnvelope<TPayload>>(name, {
     connection: createBullMqConnection(`queue-${name}`),
-    defaultJobOptions,
+    defaultJobOptions: buildDefaultJobOptions(name),
     ...options
   });
 };
 
-export const createWorker = <TPayload extends Record<string, unknown>>(
+export const createWorker = <TPayload>(
   name: QueueName,
   processor: Processor<JobEnvelope<TPayload>>,
   options?: Omit<WorkerOptions, 'connection'>
 ): Worker<JobEnvelope<TPayload>> => {
   return new Worker<JobEnvelope<TPayload>>(name, processor, {
     connection: createBullMqConnection(`worker-${name}`),
-    concurrency: 10,
+    concurrency: QUEUE_CONFIG[name].concurrency,
     ...options
   });
 };
 
-export const enqueue = async <TPayload extends Record<string, unknown>>(
+export const enqueue = async <TPayload>(
   queue: Queue<JobEnvelope<TPayload>>,
   name: string,
   data: JobEnvelope<TPayload>,
   options?: JobsOptions
 ) => {
-  return queue.add(name, data, options);
+  const job = await queue.add(
+    name,
+    {
+      ...data,
+      timestamps: {
+        ...data.timestamps,
+        enqueuedAt: new Date().toISOString()
+      }
+    },
+    {
+      ...(data.idempotencyKey
+        ? { jobId: `${queue.name}:${data.tenantId}:${data.eventType}:${data.idempotencyKey}` }
+        : {}),
+      ...options
+    }
+  );
+
+  await jobLifecycleService.onEnqueued(job);
+  return job;
 };
