@@ -1,11 +1,11 @@
 import type { RequestHandler } from 'express';
-import type { AnyZodObject } from 'zod';
+import type { ZodTypeAny } from 'zod';
 import { ValidationError } from '../errors/application-errors';
 
 interface ValidationSchemas {
-  body?: AnyZodObject;
-  query?: AnyZodObject;
-  params?: AnyZodObject;
+  body?: ZodTypeAny;
+  query?: ZodTypeAny;
+  params?: ZodTypeAny;
 }
 
 export const validateMiddleware = (schemas: ValidationSchemas): RequestHandler => {

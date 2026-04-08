@@ -3,12 +3,13 @@ import { createWorker } from '../../infra/queue/bullmq';
 import { logger } from '../../infra/logger/pino';
 import { QUEUE_NAMES } from '../../shared/constants/queue-names';
 import { baseProcessor } from '../processors/base.processor';
+import { webhookProcessor } from '../processors/webhook.processor';
 
 const workers: Worker[] = [];
 
 export const startWorkers = async (): Promise<void> => {
   const createdWorkers = [
-    createWorker(QUEUE_NAMES.webhookIngestion, baseProcessor, { concurrency: 20 }),
+    createWorker(QUEUE_NAMES.webhookIngestion, webhookProcessor, { concurrency: 20 }),
     createWorker(QUEUE_NAMES.automationDispatch, baseProcessor, { concurrency: 15 }),
     createWorker(QUEUE_NAMES.usageAggregation, baseProcessor, { concurrency: 10 })
   ];
