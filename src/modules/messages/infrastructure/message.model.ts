@@ -11,7 +11,12 @@ const messageSchema = createTenantBaseSchema({
   externalMessageId: { type: String, trim: true, maxlength: 120 },
   idempotencyKey: { type: String, trim: true, maxlength: 120 },
   bodyText: { type: String, trim: true, maxlength: 10000 },
-  contentType: { type: String, required: true, enum: ['text', 'image', 'audio', 'video', 'document', 'template'], default: 'text' },
+  contentType: {
+    type: String,
+    required: true,
+    enum: ['text', 'image', 'audio', 'video', 'document', 'template'],
+    default: 'text'
+  },
   sentAt: { type: Date },
   deliveredAt: { type: Date },
   failedAt: { type: Date },
@@ -23,6 +28,8 @@ messageSchema.index({ tenantId: 1, conversationId: 1, createdAt: -1 });
 messageSchema.index({ tenantId: 1, contactId: 1, createdAt: -1 });
 messageSchema.index({ tenantId: 1, channelId: 1, createdAt: -1 });
 messageSchema.index({ tenantId: 1, integrationId: 1, status: 1, createdAt: -1 });
+messageSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
+messageSchema.index({ tenantId: 1, direction: 1, createdAt: -1 });
 messageSchema.index({ tenantId: 1, externalMessageId: 1 }, { sparse: true, unique: true });
 messageSchema.index({ tenantId: 1, idempotencyKey: 1 }, { sparse: true, unique: true });
 

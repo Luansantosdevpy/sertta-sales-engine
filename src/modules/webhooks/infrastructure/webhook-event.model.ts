@@ -1,5 +1,7 @@
 import { Schema, model, type InferSchemaType } from 'mongoose';
+import { config } from '../../../config';
 import { createTenantBaseSchema } from '../../../database/mongoose/base/tenant-base.schema';
+import { buildRetentionDate } from '../../../shared/utils/retention';
 
 const webhookEventSchema = createTenantBaseSchema({
   provider: {
@@ -27,15 +29,18 @@ const webhookEventSchema = createTenantBaseSchema({
   queuedAt: { type: Date },
   processedAt: { type: Date },
   failedAt: { type: Date },
-  errorMessage: { type: String, trim: true, maxlength: 2000 }
+  errorMessage: { type: String, trim: true, maxlength: 2000 },
+  expiresAt: { type: Date, required: true, default: () => buildRetentionDate(config.retention.webhookEventsDays) }
 });
 
 webhookEventSchema.index({ tenantId: 1, provider: 1, status: 1, createdAt: -1 });
+webhookEventSchema.index({ tenantId: 1, eventType: 1, createdAt: -1 });
 webhookEventSchema.index({ tenantId: 1, integrationId: 1, createdAt: -1 }, { sparse: true });
 webhookEventSchema.index({ tenantId: 1, channelId: 1, createdAt: -1 }, { sparse: true });
 webhookEventSchema.index({ tenantId: 1, externalEventId: 1, provider: 1 }, { sparse: true, unique: true });
 webhookEventSchema.index({ tenantId: 1, idempotencyKey: 1 }, { sparse: true, unique: true });
 webhookEventSchema.index({ tenantId: 1, correlationId: 1, createdAt: -1 });
+webhookEventSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export type WebhookEventDocument = InferSchemaType<typeof webhookEventSchema>;
 export const WebhookEventModel = model<WebhookEventDocument>('WebhookEvent', webhookEventSchema);

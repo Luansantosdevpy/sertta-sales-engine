@@ -15,9 +15,11 @@ const conversationSchema = createTenantBaseSchema({
 });
 
 conversationSchema.index({ tenantId: 1, status: 1, lastMessageAt: -1 });
+conversationSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
 conversationSchema.index({ tenantId: 1, contactId: 1, createdAt: -1 });
 conversationSchema.index({ tenantId: 1, channelId: 1, status: 1 });
 conversationSchema.index({ tenantId: 1, integrationId: 1, status: 1 });
+conversationSchema.index({ tenantId: 1, assignedToUserId: 1, status: 1, updatedAt: -1 }, { sparse: true });
 
 export type ConversationDocument = InferSchemaType<typeof conversationSchema>;
 export const ConversationModel = model<ConversationDocument>('Conversation', conversationSchema);
