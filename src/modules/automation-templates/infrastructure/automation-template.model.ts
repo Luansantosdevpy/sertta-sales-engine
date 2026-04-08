@@ -44,14 +44,9 @@ const automationTemplateSchema = createBaseSchema({
 
 automationTemplateSchema.index({ scope: 1, status: 1, createdAt: -1 });
 automationTemplateSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
-automationTemplateSchema.index(
-  { scope: 1, tenantId: 1, code: 1, currentVersion: 1 },
-  { unique: true, partialFilterExpression: { tenantId: { $exists: true } } }
-);
-automationTemplateSchema.index(
-  { scope: 1, code: 1, currentVersion: 1 },
-  { unique: true, partialFilterExpression: { scope: 'system' } }
-);
+automationTemplateSchema.index({ scope: 1, tenantId: 1, code: 1 }, { unique: true, partialFilterExpression: { scope: 'tenant' } });
+automationTemplateSchema.index({ scope: 1, code: 1 }, { unique: true, partialFilterExpression: { scope: 'system' } });
+automationTemplateSchema.index({ triggerType: 1, status: 1, createdAt: -1 });
 
 export type AutomationTemplateDocument = InferSchemaType<typeof automationTemplateSchema>;
 export const AutomationTemplateModel = model<AutomationTemplateDocument>(
