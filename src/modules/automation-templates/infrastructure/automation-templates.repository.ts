@@ -1,4 +1,5 @@
 import { AutomationTemplateModel } from './automation-template.model';
+import { platformScope, withTenantScope } from '../../../shared/tenancy/tenant-scope';
 
 export const automationTemplatesRepository = {
   async createSystemTemplate(data: {
@@ -16,28 +17,31 @@ export const automationTemplatesRepository = {
     });
   },
 
-  async createTenantTemplate(tenantId: string, data: {
-    code: string;
-    name: string;
-    description?: string;
-    triggerType: 'webhook_received' | 'lead_created' | 'message_received' | 'schedule' | 'manual';
-    definition: Record<string, unknown>;
-    createdByUserId: string;
-  }) {
-    return AutomationTemplateModel.create({
-      scope: 'tenant',
-      tenantId,
-      ...data,
-      status: 'draft'
-    });
+  async createTenantTemplate(
+    tenantId: string,
+    data: {
+      code: string;
+      name: string;
+      description?: string;
+      triggerType: 'webhook_received' | 'lead_created' | 'message_received' | 'schedule' | 'manual';
+      definition: Record<string, unknown>;
+      createdByUserId: string;
+    }
+  ) {
+    return AutomationTemplateModel.create(
+      withTenantScope(tenantId, {
+        scope: 'tenant',
+        ...data,
+        status: 'draft'
+      })
+    );
   },
 
-  async listAvailable(tenantId: string) {
-    return AutomationTemplateModel.find({
-      $or: [{ scope: 'system', status: 'published' }, { scope: 'tenant', tenantId }]
-    })
-      .sort({ scope: 1, createdAt: -1 })
-      ;
+  async listPlatformTemplates() {
+    return AutomationTemplateModel.find(platformScope({ scope: 'system', status: 'published' })).sort({ createdAt: -1 });
+  },
+
+  async listTenantTemplates(tenantId: string) {
+    return AutomationTemplateModel.find(withTenantScope(tenantId, { scope: 'tenant' })).sort({ createdAt: -1 });
   }
 };
-

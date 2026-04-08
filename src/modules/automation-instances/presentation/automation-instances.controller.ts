@@ -16,6 +16,12 @@ export const listAutomationInstancesHandler: RequestHandler = async (req, res) =
   return apiResponse.success(res, { data: result });
 };
 
+export const getAutomationInstanceHandler: RequestHandler = async (req, res) => {
+  const instanceId = req.params['instanceId'];
+  const result = await automationInstancesService.getById(req.tenantContext, String(instanceId));
+  return apiResponse.success(res, { data: result });
+};
+
 export const updateAutomationInstanceStatusHandler: RequestHandler = async (req, res) => {
   const instanceId = req.params['instanceId'];
   const status = req.body['status'];

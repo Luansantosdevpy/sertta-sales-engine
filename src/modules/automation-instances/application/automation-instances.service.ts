@@ -1,5 +1,5 @@
 import { NotFoundError } from '../../../shared/errors/application-errors';
-import { requireTenantContext } from '../../../shared/tenancy/tenant-scope';
+import { assertDocumentTenant, requireTenantContext } from '../../../shared/tenancy/tenant-scope';
 import type { TenantContext } from '../../../shared/tenancy/tenant-context';
 import { automationInstancesRepository } from '../infrastructure/automation-instances.repository';
 
@@ -29,7 +29,20 @@ export const automationInstancesService = {
 
   async list(tenantContext: TenantContext | undefined, status?: string) {
     const scoped = requireTenantContext(tenantContext);
-    return automationInstancesRepository.list(scoped.tenantId, status);
+    const items = await automationInstancesRepository.list(scoped.tenantId, status);
+    return items.map((item) => item.toJSON());
+  },
+
+  async getById(tenantContext: TenantContext | undefined, instanceId: string) {
+    const scoped = requireTenantContext(tenantContext);
+    const instance = await automationInstancesRepository.findByIdInTenant(scoped.tenantId, instanceId);
+
+    if (!instance) {
+      throw new NotFoundError('Automation instance not found');
+    }
+
+    assertDocumentTenant(scoped, String(instance['tenantId']));
+    return instance.toJSON();
   },
 
   async setStatus(
@@ -45,6 +58,6 @@ export const automationInstancesService = {
       throw new NotFoundError('Automation instance not found');
     }
 
-    return updated;
+    return updated.toJSON();
   }
 };

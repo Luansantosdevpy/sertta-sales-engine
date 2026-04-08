@@ -26,6 +26,11 @@ export const automationTemplatesService = {
 
   async listAvailable(tenantContext: TenantContext | undefined) {
     const scoped = requireTenantContext(tenantContext);
-    return automationTemplatesRepository.listAvailable(scoped.tenantId);
+    const [platformTemplates, tenantTemplates] = await Promise.all([
+      automationTemplatesRepository.listPlatformTemplates(),
+      automationTemplatesRepository.listTenantTemplates(scoped.tenantId)
+    ]);
+
+    return [...platformTemplates, ...tenantTemplates].map((template) => template.toJSON());
   }
 };

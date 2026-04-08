@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { asyncHandler } from '../../../shared/http/async-handler';
 import { authMiddleware } from '../../../shared/middleware/auth.middleware';
 import { requirePermission } from '../../../shared/middleware/require-permission.middleware';
+import { requireTenantContextMiddleware } from '../../../shared/middleware/require-tenant-context.middleware';
 import { validateMiddleware } from '../../../shared/middleware/validate.middleware';
 import {
   createAutomationInstanceHandler,
+  getAutomationInstanceHandler,
   listAutomationInstancesHandler,
   updateAutomationInstanceStatusHandler
 } from './automation-instances.controller';
@@ -17,12 +19,18 @@ import {
 
 export const automationInstancesRouter = Router();
 
-automationInstancesRouter.use(authMiddleware);
+automationInstancesRouter.use(authMiddleware, requireTenantContextMiddleware);
 automationInstancesRouter.get(
   '/automation-instances',
   requirePermission('automation:read'),
   validateMiddleware({ query: listAutomationInstancesQuerySchema }),
   asyncHandler(listAutomationInstancesHandler)
+);
+automationInstancesRouter.get(
+  '/automation-instances/:instanceId',
+  requirePermission('automation:read'),
+  validateMiddleware({ params: updateAutomationStatusParamsSchema }),
+  asyncHandler(getAutomationInstanceHandler)
 );
 automationInstancesRouter.post(
   '/automation-instances',
