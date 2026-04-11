@@ -272,3 +272,152 @@ Can be phase 2:
 - billing UI
 - advanced admin console
 - provider-specific deep integration wizards
+## 13. Complete Frontend Scope (Full Product)
+
+This section extends MVP into the complete product vision.
+
+## 13.1 Product Areas
+- Authentication and session management
+- Tenant and membership management
+- Plans, limits, and billing visibility
+- Integrations and channels
+- Contacts and conversations inbox
+- AI attendant configuration
+- Automation builder and automation operations
+- Appointments and scheduling
+- Orders and sales operations
+- Knowledge base management
+- Usage, executions, and reliability operations
+- Admin control center (platform)
+
+## 13.2 Front Modules Needed for Complete Project
+
+- `src/modules/auth`
+- `src/modules/tenants`
+- `src/modules/members`
+- `src/modules/plans`
+- `src/modules/billing`
+- `src/modules/integrations`
+- `src/modules/channels`
+- `src/modules/contacts`
+- `src/modules/conversations`
+- `src/modules/messages`
+- `src/modules/automation-templates`
+- `src/modules/automation-instances`
+- `src/modules/automation-builder`
+- `src/modules/knowledge`
+- `src/modules/ai-assistant`
+- `src/modules/appointments`
+- `src/modules/orders`
+- `src/modules/usage`
+- `src/modules/executions`
+- `src/modules/webhooks` (operational visibility)
+- `src/modules/admin`
+
+## 13.3 Core Screens
+
+Tenant/admin side:
+- Login, tenant selector, profile
+- Tenant settings, members and roles
+- Plan and limits overview
+- Billing status and invoices (future module integration)
+- Integrations list/detail/create
+- Channels list/detail/create
+- Automation templates list/detail/create
+- Automation instances list/detail/create/edit/status
+- Automation visual flow view (step graph)
+- Knowledge documents list/import/chunk status
+- AI attendant profile and policy settings
+- Inbox (contacts, conversations, messages)
+- Appointment calendar/list and detail
+- Orders list/detail/status updates
+- Usage dashboard (by metric and date)
+- Execution jobs/logs explorer with filters and correlation search
+- Webhook events explorer and replay actions (future)
+
+Platform admin side:
+- Tenant directory
+- Plan management
+- Global queue health
+- Operational incidents and dead-letter review
+
+## 13.4 UX and Interaction Requirements
+
+- tenant-switch always visible in authenticated shell
+- explicit context badges: current tenant, current channel/integration
+- robust empty states with guided next actions
+- strong status visualization (queued, processing, failed, archived)
+- filter-first operations pages (jobs/logs/messages/orders)
+- inline error diagnostics with `requestId`
+
+## 13.5 Front Data and State Requirements
+
+Required shared stores:
+- session store (access/refresh token + auth identity)
+- tenant store (selected tenant + memberships)
+- permissions store (role/permission matrix)
+- feature flag store (module visibility and staged rollout)
+
+Required API utilities:
+- typed API client
+- interceptor with token refresh
+- unified pagination/query helpers
+- unified backend error parser
+
+## 13.6 Security and Compliance UX Requirements
+
+- role-based route guards
+- permission-based action visibility (buttons/forms)
+- confirmation steps for destructive actions
+- sensitive action audit hints (who, when, requestId)
+- PII-safe UI logging
+
+## 13.7 Full End-to-End Scenarios to Support
+
+1. Onboarding scenario:
+- create user -> create tenant -> login -> choose tenant -> configure integration/channel
+
+2. AI sales support scenario:
+- inbound message -> AI response with tenant catalog knowledge -> order creation -> confirmation message
+
+3. AI scheduling scenario:
+- inbound request -> slot proposal -> appointment creation -> reminder scheduling
+
+4. Support handoff scenario:
+- low confidence intent -> human handoff -> operator continues conversation
+
+5. Reliability scenario:
+- webhook duplicated -> dedup works -> no duplicated order/appointment
+
+6. Operations scenario:
+- manager inspects logs/jobs/usage to troubleshoot failed automations
+
+## 13.8 Front Completion Checklist
+
+Must be complete before broad client onboarding:
+- all tenant-scoped pages enforce selected tenant context
+- all critical actions protected by role/permission checks
+- token refresh and session expiry flows stable
+- operations dashboards available for support teams
+- AI assistant controls and fallback/handoff visible
+- order and appointment flows usable end-to-end
+- billing and plan-limit visibility implemented (or feature-flagged with clear UI)
+
+## 13.9 Front Roadmap Suggestion
+
+Phase A (MVP hardening):
+- onboarding, integrations/channels, templates/instances, jobs/logs/usage
+
+Phase B (core product):
+- contacts/conversations/messages inbox
+- AI assistant settings
+- knowledge management
+
+Phase C (transactional operations):
+- appointments
+- orders
+- reminder orchestration UI
+
+Phase D (platform scale):
+- billing/admin modules
+- advanced observability and replay tooling
