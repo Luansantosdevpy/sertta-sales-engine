@@ -21,7 +21,6 @@ const integrationSchema = createTenantBaseSchema({
 });
 
 integrationSchema.index({ tenantId: 1, provider: 1, status: 1 });
-integrationSchema.index({ tenantId: 1, createdAt: -1 });
 integrationSchema.index({ tenantId: 1, externalAccountId: 1 }, { sparse: true });
 integrationSchema.index({ tenantId: 1, name: 1 }, { unique: true });
 

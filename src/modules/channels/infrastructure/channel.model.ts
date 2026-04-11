@@ -18,7 +18,6 @@ const channelSchema = createTenantBaseSchema({
 
 channelSchema.index({ tenantId: 1, integrationId: 1, status: 1 });
 channelSchema.index({ tenantId: 1, kind: 1, status: 1 });
-channelSchema.index({ tenantId: 1, createdAt: -1 });
 channelSchema.index({ tenantId: 1, externalChannelId: 1 }, { sparse: true });
 channelSchema.index({ tenantId: 1, name: 1 }, { unique: true });
 
