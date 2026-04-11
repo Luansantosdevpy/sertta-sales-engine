@@ -26,3 +26,21 @@ export interface WebhookQueuePayload extends Record<string, unknown> {
   externalEventId?: string;
   idempotencyKey?: string;
 }
+
+export interface InboundEventQueuePayload extends Record<string, unknown> {
+  webhookEventId: string;
+  tenantId: string;
+  provider: WebhookProvider;
+  eventType: string;
+  occurredAt: string;
+}
+
+export interface AiTaskQueuePayload extends Record<string, unknown> {
+  webhookEventId: string;
+  tenantId: string;
+  provider: WebhookProvider;
+  messageText: string;
+  recipient: string;
+  channelId?: string;
+  integrationId?: string;
+}

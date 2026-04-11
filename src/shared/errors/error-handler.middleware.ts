@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
+import { Error as MongooseError } from 'mongoose';
 import { ZodError } from 'zod';
 import { AppError } from './app-error';
 import { ERROR_CODES } from './error-model';
@@ -14,6 +15,23 @@ export const errorHandlerMiddleware: ErrorRequestHandler = (error, req, res, _ne
         code: ERROR_CODES.validationFailed,
         message: 'Validation failed',
         details: error.issues
+      },
+      requestId: req.requestId
+    });
+    return;
+  }
+
+  if (error instanceof MongooseError.ValidationError) {
+    const details = Object.values(error.errors).map((item) => ({
+      path: item.path,
+      message: item.message
+    }));
+
+    res.status(400).json({
+      error: {
+        code: ERROR_CODES.validationFailed,
+        message: 'Validation failed',
+        details
       },
       requestId: req.requestId
     });
