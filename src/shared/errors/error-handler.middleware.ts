@@ -38,6 +38,24 @@ export const errorHandlerMiddleware: ErrorRequestHandler = (error, req, res, _ne
     return;
   }
 
+  if (error instanceof MongooseError.CastError) {
+    res.status(400).json({
+      error: {
+        code: ERROR_CODES.validationFailed,
+        message: 'Invalid identifier format',
+        details: [
+          {
+            path: error.path,
+            value: error.value,
+            kind: error.kind
+          }
+        ]
+      },
+      requestId: req.requestId
+    });
+    return;
+  }
+
   if (error instanceof AppError) {
     if (error.statusCode >= 500) {
       req.log.error({ err: error }, 'Operational error');

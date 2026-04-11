@@ -32,6 +32,13 @@ const envSchema = z.object({
   WEBHOOK_EVENT_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   JOB_RECORD_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
 
+  AI_PROVIDER: z.enum(['heuristic', 'openai']).default('heuristic'),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-4.1-mini'),
+  OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
+  OPENAI_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  OPENAI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.2),
+
   WORKER_QUEUES: z.string().optional()
 });
 
@@ -43,6 +50,10 @@ if (!parsedEnv.success) {
     .join('; ');
 
   throw new Error(`Invalid environment variables: ${formattedErrors}`);
+}
+
+if (parsedEnv.data.AI_PROVIDER === 'openai' && !parsedEnv.data.OPENAI_API_KEY) {
+  throw new Error('Invalid environment variables: OPENAI_API_KEY is required when AI_PROVIDER=openai');
 }
 
 export const env = parsedEnv.data;

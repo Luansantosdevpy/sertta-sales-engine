@@ -55,6 +55,16 @@ export const config = {
     webhookEventsDays: env.WEBHOOK_EVENT_RETENTION_DAYS,
     jobRecordsDays: env.JOB_RECORD_RETENTION_DAYS
   },
+  ai: {
+    provider: env.AI_PROVIDER,
+    openAi: {
+      apiKey: env.OPENAI_API_KEY,
+      model: env.OPENAI_MODEL,
+      baseUrl: env.OPENAI_BASE_URL,
+      timeoutMs: env.OPENAI_TIMEOUT_MS,
+      temperature: env.OPENAI_TEMPERATURE
+    }
+  },
   workers: {
     queueFilter: workerQueues
   }

@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { TenantMemberModel } from '../../modules/tenant-memberships/infrastructure/tenant-member.model';
 import { getRolePermissions } from '../auth/permissions';
 import { ROLES, type Role } from '../auth/roles';
@@ -7,10 +8,7 @@ import { ForbiddenError, UnauthorizedError } from '../errors/application-errors'
 import { extractBearerToken } from '../security/extract-bearer-token';
 import { tokenService } from '../security/token.service';
 import { resolveTenantContext } from '../tenancy/tenant-context';
-import {
-  assertTenantMatchesAuth,
-  resolveTenantIdForRequest
-} from '../tenancy/tenant-resolution';
+import { assertTenantMatchesAuth, resolveTenantIdForRequest } from '../tenancy/tenant-resolution';
 
 export const authMiddleware = async (req: Request, _res: Response, next: NextFunction) => {
   try {
@@ -66,6 +64,16 @@ export const authMiddleware = async (req: Request, _res: Response, next: NextFun
 
     next();
   } catch (error) {
+    if (error instanceof TokenExpiredError) {
+      next(new UnauthorizedError('Access token expired'));
+      return;
+    }
+
+    if (error instanceof JsonWebTokenError) {
+      next(new UnauthorizedError('Invalid access token'));
+      return;
+    }
+
     next(error);
   }
 };

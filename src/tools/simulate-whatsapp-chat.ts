@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.simulation' });
+dotenv.config();
 
 interface AssistantRunLike {
   id?: string;
@@ -14,11 +18,19 @@ interface AssistantRunLike {
   createdAt?: string;
 }
 
-const baseUrl = process.env['SIM_BASE_URL'] ?? 'http://localhost:3000';
-const apiPrefix = process.env['SIM_API_PREFIX'] ?? '/api';
-const tenantId = process.env['SIM_TENANT_ID'];
-const accessToken = process.env['SIM_ACCESS_TOKEN'];
-const fromPhone = process.env['SIM_FROM_PHONE'] ?? '+5511999999999';
+const cleanEnvValue = (value: string | undefined): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  return value.trim().replace(/^['"]|['"]$/g, '');
+};
+
+const baseUrl = cleanEnvValue(process.env['SIM_BASE_URL']) ?? 'http://localhost:3000';
+const apiPrefix = cleanEnvValue(process.env['SIM_API_PREFIX']) ?? '/api';
+const tenantId = cleanEnvValue(process.env['SIM_TENANT_ID']);
+const accessToken = cleanEnvValue(process.env['SIM_ACCESS_TOKEN']);
+const fromPhone = cleanEnvValue(process.env['SIM_FROM_PHONE']) ?? '+5511999999999';
 
 const ensureRequired = () => {
   const missing: string[] = [];
@@ -41,7 +53,7 @@ const requestJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`HTTP ${response.status} ${response.statusText}: ${text}`);
+    throw new Error(`HTTP ${response.status} ${response.statusText} at ${url}: ${text}`);
   }
 
   return (await response.json()) as T;

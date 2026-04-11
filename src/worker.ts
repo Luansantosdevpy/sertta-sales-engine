@@ -1,14 +1,17 @@
+import { disconnectMongo, connectMongo } from './database/mongoose/connection';
 import { disconnectRedis, initRedis } from './infra/cache/redis-client';
 import { logger } from './infra/logger/pino';
 import { startWorkers, stopWorkers } from './jobs/workers/worker';
 
 const bootstrapWorker = async (): Promise<void> => {
+  await connectMongo();
   await initRedis();
   await startWorkers();
 
   const shutdown = async (signal: NodeJS.Signals) => {
     logger.info({ signal }, 'Worker shutdown started');
     await stopWorkers();
+    await disconnectMongo();
     await disconnectRedis();
     logger.info('Worker shutdown complete');
     process.exit(0);

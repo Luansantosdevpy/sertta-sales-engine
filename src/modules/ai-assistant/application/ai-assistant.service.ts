@@ -8,31 +8,21 @@ import { knowledgeRepository } from '../../knowledge/infrastructure/knowledge.re
 import { appointmentsRepository } from '../../appointments/infrastructure/appointments.repository';
 import { ordersRepository } from '../../orders/infrastructure/orders.repository';
 import { aiAssistantRepository } from '../infrastructure/ai-assistant.repository';
-import type { AssistantActionType, AssistantIntent } from '../domain/assistant.types';
+import type { AssistantActionType } from '../domain/assistant.types';
+import { aiDecisionService } from './services/ai-decision.service';
 
-const normalizeMessage = (message: string): string => message.trim().toLowerCase();
+interface AssistantProfilePolicy {
+  canCreateOrders: boolean;
+  canCreateAppointments: boolean;
+}
 
-const detectIntent = (message: string): { intent: AssistantIntent; confidence: number } => {
-  const normalized = normalizeMessage(message);
-
-  if (/agendar|marcar|agenda|horario|horário/.test(normalized)) {
-    return { intent: 'schedule_request', confidence: 0.89 };
-  }
-
-  if (/comprar|pedido|orcamento|orçamento|fechar/.test(normalized)) {
-    return { intent: 'order_request', confidence: 0.87 };
-  }
-
-  if (/produto|servico|serviço|preco|preço|plano/.test(normalized)) {
-    return { intent: 'product_question', confidence: 0.8 };
-  }
-
-  if (/suporte|ajuda|problema|erro/.test(normalized)) {
-    return { intent: 'support_question', confidence: 0.7 };
-  }
-
-  return { intent: 'fallback', confidence: 0.45 };
-};
+interface AssistantProfileState {
+  tone: 'friendly' | 'formal' | 'sales';
+  language: string;
+  handoffEnabled: boolean;
+  handoffThreshold: number;
+  policy: AssistantProfilePolicy;
+}
 
 const nextBusinessSlot = (): Date => {
   const target = new Date();
@@ -41,37 +31,41 @@ const nextBusinessSlot = (): Date => {
   return target;
 };
 
-const makeReply = (params: {
-  tone: 'friendly' | 'formal' | 'sales';
-  intent: AssistantIntent;
-  knowledgeSnippets: string[];
-  catalogHint?: string;
-}): string => {
-  const openingByTone = {
-    friendly: 'Perfeito, vou te ajudar com isso.',
-    formal: 'Entendido. Vou seguir com sua solicitacao.',
-    sales: 'Excelente, vamos resolver isso agora para voce.'
-  } as const;
+const getProfileState = (profile: Record<string, unknown> | null): AssistantProfileState => {
+  const policy = (profile?.['policy'] as AssistantProfilePolicy | undefined) ?? {
+    canCreateOrders: true,
+    canCreateAppointments: true
+  };
 
-  const opening = openingByTone[params.tone];
+  return {
+    tone: (profile?.['tone'] as AssistantProfileState['tone'] | undefined) ?? 'friendly',
+    language: (profile?.['language'] as string | undefined) ?? 'pt-BR',
+    handoffEnabled: (profile?.['handoffEnabled'] as boolean | undefined) ?? true,
+    handoffThreshold: (profile?.['handoffThreshold'] as number | undefined) ?? 0.45,
+    policy
+  };
+};
 
-  if (params.intent === 'schedule_request') {
-    return `${opening} Posso sugerir um horario para nossa conversa e confirmar com voce em seguida.`;
+const resolveActionType = (params: {
+  suggestedAction: AssistantActionType;
+  confidence: number;
+  handoffEnabled: boolean;
+  handoffThreshold: number;
+  policy: AssistantProfilePolicy;
+}): AssistantActionType => {
+  if (params.handoffEnabled && params.confidence < params.handoffThreshold) {
+    return 'human.handoff';
   }
 
-  if (params.intent === 'order_request') {
-    return `${opening} Iniciei seu pedido e ja posso seguir para confirmacao dos itens.`;
+  if (params.suggestedAction === 'appointment.create' && !params.policy.canCreateAppointments) {
+    return params.handoffEnabled ? 'human.handoff' : 'message.reply';
   }
 
-  if (params.intent === 'product_question' && params.catalogHint) {
-    return `${opening} Sobre o que voce pediu: ${params.catalogHint}`;
+  if (params.suggestedAction === 'order.create' && !params.policy.canCreateOrders) {
+    return params.handoffEnabled ? 'human.handoff' : 'message.reply';
   }
 
-  if (params.knowledgeSnippets.length > 0) {
-    return `${opening} ${params.knowledgeSnippets[0]}`;
-  }
-
-  return `${opening} Pode me dar mais detalhes para eu te atender com precisao?`;
+  return params.suggestedAction;
 };
 
 export const aiAssistantService = {
@@ -140,19 +134,38 @@ export const aiAssistantService = {
       return existing.toJSON();
     }
 
-    const profile = await aiAssistantRepository.getProfile(params.tenantId);
-    const tone = (profile?.get('tone') as 'friendly' | 'formal' | 'sales' | undefined) ?? 'friendly';
+    const profileDoc = await aiAssistantRepository.getProfile(params.tenantId);
+    const profile = profileDoc ? (profileDoc.toJSON() as Record<string, unknown>) : null;
+    const profileState = getProfileState(profile);
 
-    const { intent, confidence } = detectIntent(params.messageText);
     const knowledgeDocs = await knowledgeRepository.searchActive(params.tenantId, params.messageText);
     const catalogItems = await catalogRepository.listActiveBySearch(params.tenantId, params.messageText);
 
-    let actionType: AssistantActionType = 'message.reply';
+    const catalogSummaries = catalogItems.map(
+      (item) => `${String(item['name'])} | ${Number(item['priceCents']) / 100} ${String(item['currency'])}`
+    );
+    const knowledgeSnippets = knowledgeDocs.map((item) => String(item['content']).slice(0, 240));
+
+    const decision = await aiDecisionService.decide({
+      messageText: params.messageText,
+      tone: profileState.tone,
+      language: profileState.language,
+      handoffEnabled: profileState.handoffEnabled,
+      catalogSummaries,
+      knowledgeSnippets
+    });
+
+    const actionType = resolveActionType({
+      suggestedAction: decision.suggestedAction,
+      confidence: decision.confidence,
+      handoffEnabled: profileState.handoffEnabled,
+      handoffThreshold: profileState.handoffThreshold,
+      policy: profileState.policy
+    });
+
     let actionResult: Record<string, unknown> = {};
 
-    if (intent === 'schedule_request' && ((profile?.get('policy') as Record<string, boolean> | undefined)?.['canCreateAppointments'] ?? true)) {
-      actionType = 'appointment.create';
-
+    if (actionType === 'appointment.create') {
       const appointment = await appointmentsRepository.create(params.tenantId, {
         title: 'Conversa iniciada pelo atendente IA',
         notes: `Criado a partir do webhook ${params.webhookEventId}`,
@@ -166,9 +179,7 @@ export const aiAssistantService = {
         appointmentId: String(appointment['_id']),
         scheduledFor: appointment['scheduledFor']
       };
-    } else if (intent === 'order_request' && ((profile?.get('policy') as Record<string, boolean> | undefined)?.['canCreateOrders'] ?? true)) {
-      actionType = 'order.create';
-
+    } else if (actionType === 'order.create') {
       const selectedItem = catalogItems[0];
       const itemName = selectedItem ? String(selectedItem['name']) : 'Atendimento personalizado';
       const unitPriceCents = selectedItem ? Number(selectedItem['priceCents']) : 0;
@@ -196,32 +207,19 @@ export const aiAssistantService = {
         orderId: String(order['_id']),
         totalCents: order['totalCents']
       };
-    } else if (intent === 'product_question') {
-      actionType = 'knowledge.answer';
-    } else if (intent === 'fallback' && ((profile?.get('handoffEnabled') as boolean | undefined) ?? true)) {
-      actionType = 'human.handoff';
+    } else if (actionType === 'human.handoff') {
       actionResult = {
         handoff: true,
-        reason: 'low_confidence'
+        reason: decision.confidence < profileState.handoffThreshold ? 'low_confidence' : 'policy_block'
       };
     }
 
-    const knowledgeSnippets = knowledgeDocs.map((item) => String(item['content']).slice(0, 240));
-    const catalogHint = catalogItems[0]
-      ? `${String(catalogItems[0]['name'])} esta disponivel por ${Number(catalogItems[0]['priceCents']) / 100} ${String(catalogItems[0]['currency'])}.`
-      : undefined;
-
-    const outputMessage = makeReply({
-      tone,
-      intent,
-      knowledgeSnippets,
-      ...(catalogHint ? { catalogHint } : {})
-    });
+    const outputMessage = decision.outputMessage;
 
     const run = await aiAssistantRepository.createRun(params.tenantId, {
       sourceWebhookEventId: params.webhookEventId,
-      intent,
-      confidence,
+      intent: decision.intent,
+      confidence: decision.confidence,
       actionType,
       inputMessage: params.messageText,
       outputMessage,
@@ -240,14 +238,14 @@ export const aiAssistantService = {
       tenantId: params.tenantId,
       metric: 'ai_tokens_in',
       period: 'daily',
-      amount: Math.max(1, Math.ceil(params.messageText.length / 4))
+      amount: decision.promptTokens ?? Math.max(1, Math.ceil(params.messageText.length / 4))
     });
 
     await usageService.trackEvent({
       tenantId: params.tenantId,
       metric: 'ai_tokens_out',
       period: 'daily',
-      amount: Math.max(1, Math.ceil(outputMessage.length / 4))
+      amount: decision.completionTokens ?? Math.max(1, Math.ceil(outputMessage.length / 4))
     });
 
     await enqueue(
@@ -273,8 +271,10 @@ export const aiAssistantService = {
         tenantId: params.tenantId,
         webhookEventId: params.webhookEventId,
         assistantRunId: String(run['_id']),
-        intent,
+        intent: decision.intent,
         actionType,
+        confidence: decision.confidence,
+        provider: 'assistant',
         correlationId: params.correlationId
       },
       'AI assistant handled inbound WhatsApp message'
@@ -283,4 +283,3 @@ export const aiAssistantService = {
     return run.toJSON();
   }
 };
-

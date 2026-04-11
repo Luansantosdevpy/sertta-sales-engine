@@ -5,6 +5,7 @@ import type { QueueName } from '../../shared/constants/queue-names';
 import { QUEUE_CONFIG } from './queue-catalog';
 import type { JobEnvelope } from './job-envelope';
 import { jobLifecycleService } from '../../jobs/lifecycle/job-lifecycle.service';
+import { logger } from '../logger/pino';
 
 const buildDefaultJobOptions = (queueName: QueueName): JobsOptions => ({
   attempts: QUEUE_CONFIG[queueName].attempts,
@@ -15,6 +16,24 @@ const buildDefaultJobOptions = (queueName: QueueName): JobsOptions => ({
   removeOnComplete: 2_000,
   removeOnFail: 5_000
 });
+
+const sanitizeJobIdPart = (value: string): string => {
+  return value.replace(/[:\s]/g, '_');
+};
+
+const buildJobId = (params: {
+  queueName: string;
+  tenantId: string;
+  eventType: string;
+  idempotencyKey: string;
+}): string => {
+  const queueName = sanitizeJobIdPart(params.queueName);
+  const tenantId = sanitizeJobIdPart(params.tenantId);
+  const eventType = sanitizeJobIdPart(params.eventType);
+  const idempotencyKey = sanitizeJobIdPart(params.idempotencyKey);
+
+  return `${queueName}__${tenantId}__${eventType}__${idempotencyKey}`;
+};
 
 export const createQueue = <TPayload>(
   name: QueueName,
@@ -66,12 +85,33 @@ export const enqueue = async <TPayload>(
     },
     {
       ...(data.idempotencyKey
-        ? { jobId: `${queue.name}:${data.tenantId}:${data.eventType}:${data.idempotencyKey}` }
+        ? {
+            jobId: buildJobId({
+              queueName: queue.name,
+              tenantId: data.tenantId,
+              eventType: data.eventType,
+              idempotencyKey: data.idempotencyKey
+            })
+          }
         : {}),
       ...options
     }
   );
 
-  await jobLifecycleService.onEnqueued(job);
+  try {
+    await jobLifecycleService.onEnqueued(job);
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        queue: queue.name,
+        jobId: job.id,
+        eventType: data.eventType,
+        tenantId: data.tenantId
+      },
+      'Failed to persist job lifecycle on enqueue; job remains enqueued'
+    );
+  }
+
   return job;
 };
