@@ -4,8 +4,13 @@ info:
   version: 0.1.0
   description: Multi-tenant modular monolith backend foundation.
 servers:
-  - url: '{{ base_url }}{{ api_prefix }}'
+  - url: '{baseUrl}{apiPrefix}'
     description: Local
+    variables:
+      baseUrl:
+        default: 'http://localhost:3000'
+      apiPrefix:
+        default: '/api'
 paths:
   /health:
     get:
@@ -445,3 +450,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
