@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { adminRouter } from '../../../modules/admin/presentation/admin.routes';
 import { aiAssistantRouter } from '../../../modules/ai-assistant/presentation/ai-assistant.routes';
 import { appointmentsRouter } from '../../../modules/appointments/presentation/appointments.routes';
 import { authRouter } from '../../../modules/auth/presentation/auth.routes';
@@ -36,3 +37,4 @@ apiRouter.use(automationTemplatesRouter);
 apiRouter.use(automationInstancesRouter);
 apiRouter.use(usageRouter);
 apiRouter.use(executionsRouter);
+apiRouter.use(adminRouter);

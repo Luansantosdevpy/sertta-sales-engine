@@ -13,6 +13,12 @@ const workerQueues = env.WORKER_QUEUES
       .filter(Boolean)
   : null;
 
+const systemAdminEmails = env.SYSTEM_ADMIN_EMAILS
+  ? env.SYSTEM_ADMIN_EMAILS.split(',')
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean)
+  : [];
+
 export const config = {
   app: {
     env: env.NODE_ENV,
@@ -64,6 +70,9 @@ export const config = {
       timeoutMs: env.OPENAI_TIMEOUT_MS,
       temperature: env.OPENAI_TEMPERATURE
     }
+  },
+  auth: {
+    systemAdminEmails
   },
   workers: {
     queueFilter: workerQueues

@@ -12,6 +12,7 @@ export interface AccessTokenClaims {
 export interface RefreshTokenClaims {
   sub: string;
   tenantId: string;
+  role: Role;
   type: 'refresh';
 }
 

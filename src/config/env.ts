@@ -39,6 +39,8 @@ const envSchema = z.object({
   OPENAI_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
   OPENAI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.2),
 
+  SYSTEM_ADMIN_EMAILS: z.string().optional(),
+
   WORKER_QUEUES: z.string().optional()
 });
 
